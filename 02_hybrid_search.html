@@ -1,0 +1,280 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>兩種找法怎麼合併</title>
+<style>
+:root {
+  --petrol: #14313D; --ink: #1B2A33; --orange: #E07A2E; --teal: #2E7D86; --green: #5E8F4E;
+  --slate: #7F959E; --mist: #EEF2F3; --red: #B8432F; --line: #D5DEE1; --paper: #F7F9FA;
+  --tint-orange: #FDF1E7; --tint-teal: #E3EFF1;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body {
+  background: var(--paper); color: var(--ink); overflow: hidden;
+  font-family: "Microsoft JhengHei", "PingFang TC", "Noto Sans TC", sans-serif;
+  display: grid; grid-template-rows: auto 1fr auto;
+}
+header { padding: 18px 36px 4px; display: flex; align-items: baseline; gap: 18px; }
+header .kicker { font-size: 14px; color: var(--teal); font-weight: 700; letter-spacing: .08em; }
+header h1 { margin: 0; font-size: 28px; color: var(--petrol); text-wrap: balance; }
+#viewport { position: relative; overflow: hidden; }
+#stage { position: absolute; left: 50%; top: 50%; width: 1280px; height: 600px; transform-origin: center center; }
+.el {
+  position: absolute; left: 0; top: 0;
+  transition: transform .9s cubic-bezier(.2,.7,.2,1), opacity .6s ease, background-color .6s, border-color .6s,
+              box-shadow .6s, color .6s, width .8s, height .8s;
+}
+.card {
+  background: #fff; border-radius: 12px; box-shadow: 0 2px 8px rgba(20,49,61,.12);
+  border: 2px solid transparent;
+}
+.label { font-size: 15px; color: var(--slate); font-weight: 700; letter-spacing: .04em; }
+footer {
+  position: relative; background: var(--petrol); color: #fff; padding: 14px 36px 18px;
+  display: grid; grid-template-columns: 1fr auto; gap: 28px; align-items: center;
+}
+#caption .t { font-size: 25px; font-weight: 700; }
+#caption .t .n { color: var(--orange); margin-right: 14px; font-variant-numeric: tabular-nums; }
+#caption .d { font-size: 18px; color: #CFE0E4; margin-top: 6px; min-height: 1.5em; max-width: 64em; }
+nav { display: flex; gap: 10px; align-items: center; }
+nav button {
+  font: inherit; font-size: 15px; color: #fff; background: rgba(255,255,255,.1);
+  border: 1px solid rgba(255,255,255,.28); border-radius: 20px; padding: 8px 16px; cursor: pointer;
+}
+nav button:hover { background: rgba(255,255,255,.2); }
+nav button:focus-visible, .dots i:focus-visible { outline: 2px solid var(--orange); outline-offset: 2px; }
+.dots { display: flex; gap: 7px; margin-right: 10px; }
+.dots i { width: 11px; height: 11px; border-radius: 50%; background: rgba(255,255,255,.3); display: block; cursor: pointer; }
+.dots i.on { background: var(--orange); }
+.dots i.done { background: rgba(224,122,46,.55); }
+#progress { position: absolute; left: 0; top: 0; height: 3px; background: var(--orange); width: 0; }
+.hint { position: fixed; right: 18px; top: 16px; font-size: 12px; color: var(--slate); }
+@media (prefers-reduced-motion: reduce) { .el { transition: none !important; } }
+
+.q { width: 560px; padding: 14px 20px; background: var(--teal); color: #fff; border-radius: 16px; font-size: 21px; font-weight: 700; text-align: center; }
+.q small { display: block; font-size: 13px; font-weight: 400; opacity: .8; }
+.head { width: 470px; text-align: center; }
+.head b { display: block; font-size: 22px; color: var(--petrol); }
+.head span { font-size: 15px; color: var(--slate); }
+.tr { width: 470px; text-align: center; font-size: 14px; }
+.tr i { font-style: normal; display: inline-block; background: var(--tint-teal); color: var(--teal); border-radius: 12px; padding: 3px 10px; margin: 0 3px 6px; font-weight: 700; }
+.arrow { height: 4px; background: var(--slate); border-radius: 2px; transform-origin: 0 50%; }
+.res { width: 470px; height: 44px; display: flex; align-items: center; gap: 10px; padding: 0 14px; font-size: 16px; overflow: hidden; }
+.res .dot { width: 14px; height: 14px; border-radius: 50%; flex: none; }
+.res .txt { flex: 1; white-space: nowrap; }
+.res .rank { width: 26px; color: var(--slate); font-weight: 700; font-variant-numeric: tabular-nums; }
+.res .both { font-size: 12px; font-weight: 700; color: #fff; background: var(--orange); border-radius: 10px; padding: 1px 8px; opacity: 0; transition: opacity .5s; }
+.res .bar { width: 0; height: 10px; border-radius: 5px; background: var(--teal); transition: width .9s; }
+.res .score { width: 40px; text-align: right; font-weight: 700; color: var(--teal); font-variant-numeric: tabular-nums; opacity: 0; transition: opacity .5s; }
+.res.out { background: #F3F4F5; }
+.res.out .txt { text-decoration: line-through; color: var(--slate); }
+.stage-label { font-size: 19px; font-weight: 800; color: var(--orange); width: 470px; text-align: center; }
+.lens { width: 520px; height: 440px; border-radius: 22px; border: 3px dashed var(--orange); }
+.ai { width: 250px; padding: 22px; border-radius: 18px; background: var(--petrol); color: #fff; text-align: center; font-size: 19px; font-weight: 700; line-height: 1.5; }
+.ai small { display: block; font-size: 14px; font-weight: 400; color: #CFE0E4; }
+.out-note { width: 470px; text-align: center; font-size: 15px; color: var(--red); font-weight: 700; }
+</style>
+</head>
+<body>
+<header><span class="kicker">AI 文件問答系統｜動畫 2 / 4</span><h1>兩種找法一起用：海選、合併、再複選</h1></header>
+<div id="viewport"><div id="stage">
+<div class="el q" id="q"><small>問題</small>「Method 502.7 低溫測試要準備什麼？」</div>
+<div class="el head" id="hL"><b>看「意思」</b><span>語意搜尋：懂得換句話說</span></div>
+<div class="el head" id="hR"><b>看「字面」</b><span>關鍵字搜尋：編號、術語一字不差</span></div>
+<div class="el tr" id="trR">中文自動轉成英文關鍵字：<br><i>低溫 → low temperature</i><i>準備 → pretest</i><i>502.7 原樣比對</i></div>
+<div class="el stage-label" id="lblMerge">合併名單：兩邊都推薦的排前面</div>
+<div class="el stage-label" id="lblRerank">複選：把問題和每一段放在一起仔細比對</div>
+<div class="el lens" id="lens"></div>
+<div class="el out-note" id="outNote">只留前 5 名，其他淘汰（連長得很像的 503.7 也被刷掉）</div>
+<div class="el ai" id="ai">交給 AI 寫答案<small>只讀這 5 段</small></div>
+<div id="items"></div>
+</div></div>
+<footer>
+  <div id="progress"></div>
+  <div id="caption"><div class="t" id="capT"></div><div class="d" id="capD"></div></div>
+  <nav aria-label="播放控制">
+    <div class="dots" id="dots"></div>
+    <button id="prev">◀ 上一步</button>
+    <button id="play">❚❚ 暫停</button>
+    <button id="next">下一步 ▶</button>
+    <button id="restart" title="從頭播放（R）">↻ 重來</button>
+  </nav>
+</footer>
+<div class="hint">← → 換步驟　空白鍵 暫停／播放</div>
+<script>
+// 迷你播放引擎：每一步是一個「狀態」，scene(i) 把畫面設成第 i 步的樣子。
+// 往回跳也正確（狀態式，不是累加動畫）。自動播放、可暫停、可單步、鍵盤操作。
+(function () {
+  const stage = document.getElementById("stage");
+  const viewport = document.getElementById("viewport");
+  function fit() {
+    const s = Math.min(viewport.clientWidth / 1280, viewport.clientHeight / 600);
+    stage.style.transform = `translate(-50%, -50%) scale(${s})`;
+  }
+  window.addEventListener("resize", fit);
+  fit();
+
+  window.$ = (id) => document.getElementById(id);
+  // set(el, {x, y, s, r, o, delay, ...css})：位置用 transform，方便做轉場
+  window.set = (el, p) => {
+    if (typeof el === "string") el = $(el);
+    if (!el) return;
+    const x = p.x ?? +(el.dataset.x || 0), y = p.y ?? +(el.dataset.y || 0);
+    const s = p.s ?? +(el.dataset.s || 1), r = p.r ?? +(el.dataset.r || 0);
+    el.dataset.x = x; el.dataset.y = y; el.dataset.s = s; el.dataset.r = r;
+    el.style.transform = `translate(${x}px, ${y}px) scale(${s}) rotate(${r}deg)`;
+    if (p.o !== undefined) el.style.opacity = p.o;
+    el.style.transitionDelay = (p.delay || 0) + "ms";
+    for (const k of Object.keys(p)) {
+      if (!["x", "y", "s", "r", "o", "delay"].includes(k)) el.style[k] = p[k];
+    }
+  };
+
+  const E = { i: 0, playing: true, timer: null };
+  window.Player = {
+    init(steps, scene) {
+      E.steps = steps; E.scene = scene;
+      const dots = $("dots");
+      steps.forEach((_, k) => {
+        const d = document.createElement("i");
+        d.tabIndex = 0; d.title = `第 ${k + 1} 步`;
+        d.onclick = () => { E.playing = false; go(k); };
+        d.onkeydown = (e) => { if (e.key === "Enter") { E.playing = false; go(k); } };
+        dots.appendChild(d);
+      });
+      $("prev").onclick = () => { E.playing = false; go(E.i - 1); };
+      $("next").onclick = () => { E.playing = false; go(E.i + 1); };
+      $("play").onclick = () => {
+        if (E.i >= E.steps.length - 1 && !E.playing) { E.playing = true; go(0); return; }
+        E.playing = !E.playing; go(E.i);
+      };
+      $("restart").onclick = () => { E.playing = true; go(0); };
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "ArrowRight" || e.key === "PageDown") { E.playing = false; go(E.i + 1); }
+        else if (e.key === "ArrowLeft" || e.key === "PageUp") { E.playing = false; go(E.i - 1); }
+        else if (e.key === " ") { e.preventDefault(); $("play").click(); }
+        else if (e.key.toLowerCase() === "r") { $("restart").click(); }
+      });
+      // 先畫第 0 步的「起始狀態」（不帶轉場），再開始播
+      document.querySelectorAll(".el").forEach((el) => (el.style.transition = "none"));
+      scene(-1);
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        document.querySelectorAll(".el").forEach((el) => (el.style.transition = ""));
+        setTimeout(() => go(0), 500);
+      }));
+    },
+  };
+
+  function go(i) {
+    E.i = Math.max(0, Math.min(E.steps.length - 1, i));
+    const st = E.steps[E.i];
+    E.scene(E.i);
+    $("capT").innerHTML = `<span class="n">${E.i + 1} / ${E.steps.length}</span>${st.title}`;
+    $("capD").textContent = st.text;
+    [...$("dots").children].forEach((d, k) => { d.className = k === E.i ? "on" : k < E.i ? "done" : ""; });
+    const last = E.i >= E.steps.length - 1;
+    $("play").textContent = E.playing && !last ? "❚❚ 暫停" : last ? "↻ 重新播放" : "▶ 播放";
+    clearTimeout(E.timer);
+    const bar = $("progress");
+    bar.style.transition = "none"; bar.style.width = "0";
+    if (E.playing && !last) {
+      const dur = st.dur || 5500;
+      requestAnimationFrame(() => { bar.style.transition = `width ${dur}ms linear`; bar.style.width = "100%"; });
+      E.timer = setTimeout(() => go(E.i + 1), dur);
+    } else if (last) { E.playing = false; }
+  }
+})();
+
+</script>
+<script>
+const ITEMS = {
+  A: { t: "502.7 低溫・測試前要準備的資訊", c: "var(--teal)", score: .95 },
+  B: { t: "503.7 溫度衝擊・測試前準備", c: "var(--red)", score: .21 },
+  C: { t: "501.7 高溫・測試前資訊", c: "var(--slate)", score: .38 },
+  D: { t: "502.7 低溫・測試步驟", c: "var(--teal)", score: .83 },
+  E: { t: "520.5 溫濕度高度組合", c: "var(--slate)", score: .12 },
+  F: { t: "502.7 低溫・目的與適用範圍", c: "var(--teal)", score: .71 },
+  G: { t: "Part One 5.7 通用的測試前資訊", c: "var(--green)", score: .86 },
+  H: { t: "502.7 低溫・結果分析", c: "var(--teal)", score: .52 },
+};
+const SEM = ["A", "B", "C", "D", "E"];           // 看意思：502.7 和 503.7 分不太出來
+const KEY = ["A", "D", "F", "G", "H"];           // 看字面：編號精準，但不懂換句話說
+const MERGED = ["A", "D", "F", "B", "G", "C", "H", "E"];
+const RERANK = ["A", "G", "D", "F", "H", "C", "B", "E"];
+const KEEP = 5;
+
+// 每個項目可能同時出現在兩邊：左右各做一張卡，合併時把右邊那張疊到左邊那張上
+const host = $("items");
+function mk(id, side) {
+  const d = document.createElement("div");
+  d.className = "el card res"; d.id = side + id;
+  d.innerHTML = `<span class="rank"></span><span class="dot" style="background:${ITEMS[id].c}"></span>` +
+    `<span class="txt">${ITEMS[id].t}</span><span class="both">兩邊都有</span><span class="bar"></span><span class="score">${ITEMS[id].score.toFixed(2)}</span>`;
+  host.appendChild(d); return d;
+}
+const L = {}, R = {};
+SEM.forEach((id) => (L[id] = mk(id, "L")));
+KEY.forEach((id) => (R[id] = mk(id, "R")));
+
+const LX = 60, RX = 750, CX = 405, TOP = 230, GAP = 54;
+function scene(i) {
+  set("q", { x: 360, y: 8, o: i >= 0 ? 1 : 0 });
+  const paths = i >= 0 && i <= 1;
+  set("hL", { x: LX, y: 108, o: paths ? 1 : 0 });
+  set("hR", { x: RX, y: 108, o: paths ? 1 : 0, delay: 200 });
+  set("trR", { x: RX, y: 170, o: i === 0 ? 1 : 0, delay: 500 });
+
+  // 第 2 步：兩邊各自的名單
+  SEM.forEach((id, k) => {
+    const el = L[id];
+    el.querySelector(".rank").textContent = (k + 1) + ".";
+    if (i < 1) set(el, { x: LX, y: TOP + k * GAP, o: 0, s: .95 });
+    else if (i === 1) set(el, { x: LX, y: TOP + k * GAP, o: 1, s: 1, delay: k * 120 });
+  });
+  KEY.forEach((id, k) => {
+    const el = R[id];
+    el.querySelector(".rank").textContent = (k + 1) + ".";
+    if (i < 1) set(el, { x: RX, y: TOP + k * GAP, o: 0, s: .95 });
+    else if (i === 1) set(el, { x: RX, y: TOP + k * GAP, o: 1, s: 1, delay: 400 + k * 120 });
+  });
+
+  // 第 3 步起：合併成一份（每個項目只留一張卡，另一張疊上去後淡出）
+  if (i >= 2) {
+    const order = i >= 3 ? RERANK : MERGED;
+    order.forEach((id, k) => {
+      const main = L[id] || R[id];
+      const twin = L[id] && R[id] ? R[id] : null;
+      const kept = k < KEEP;
+      const y = 88 + k * GAP;
+      main.querySelector(".rank").textContent = (k + 1) + ".";
+      main.querySelector(".both").style.opacity = (i === 2 && twin) ? 1 : 0;
+      main.querySelector(".bar").style.width = i >= 3 ? Math.round(ITEMS[id].score * 90) + "px" : "0";
+      main.querySelector(".bar").style.background = (i >= 3 && !kept) ? "var(--line)" : "var(--teal)";
+      main.querySelector(".score").style.opacity = i >= 3 ? 1 : 0;
+      main.classList.toggle("out", i >= 4 && !kept);
+      set(main, { x: CX, y, o: (i >= 4 && !kept) ? .45 : 1, s: 1, delay: i === 2 ? k * 90 : k * 60 });
+      if (twin) set(twin, { x: CX, y, o: 0, delay: i === 2 ? k * 90 : 0 });
+      main.style.borderColor = (i >= 4 && kept) ? "var(--orange)" : "transparent";
+    });
+  }
+  set("lblMerge", { x: CX, y: 46, o: i === 2 ? 1 : 0 });
+  set("lblRerank", { x: CX, y: 46, o: i === 3 ? 1 : 0 });
+  set("lens", { x: CX - 25, y: 76, o: i === 3 ? 1 : 0, s: i === 3 ? 1 : 1.06 });
+  set("outNote", { x: CX, y: 88 + 8 * GAP + 4, o: i >= 4 ? 1 : 0, delay: i === 4 ? 500 : 0 });
+  set("ai", { x: 960, y: 170, o: i >= 4 ? 1 : 0, delay: i === 4 ? 800 : 0 });
+  if (i >= 2) set("q", { y: -80, o: 0 });
+}
+
+Player.init([
+  { title: "同一個問題，兩條路一起找", text: "「看意思」懂得換句話說；「看字面」專門對付編號和術語。中文的關鍵字還會自動轉成英文再去找。", dur: 6500 },
+  { title: "兩份候選名單", text: "看意思的那邊，把長得很像的 503.7（溫度衝擊）也抓進來了；看字面的那邊編號很準，但只認得一模一樣的字。", dur: 7000 },
+  { title: "合併：兩邊都推薦的排前面", text: "兩份名單合在一起。兩邊都覺得重要的段落，名次往前擠 —— 這就是「海選」。", dur: 6500 },
+  { title: "複選：仔細比對、重新打分", text: "把問題和每一段放在一起，逐段仔細比對，重新打分數。這一步比較慢，所以只對海選出來的少數幾段做。", dur: 7000 },
+  { title: "只把前 5 名交給 AI", text: "分數最高的 5 段交給 AI 寫答案；長得很像但其實不相關的 503.7，在這一關被刷掉。", dur: 6500 },
+], scene);
+</script>
+</body>
+</html>

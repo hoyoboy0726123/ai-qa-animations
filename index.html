@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI 文件問答系統｜原理動畫</title>
+<style>
+  :root { --petrol:#14313D; --ink:#1B2A33; --orange:#E07A2E; --teal:#2E7D86; --mist:#EEF2F3; --slate:#5E7480; --paper:#F7F9FA; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--paper); color:var(--ink); font-family:"Microsoft JhengHei","PingFang TC","Noto Sans TC",sans-serif; }
+  header { background:var(--petrol); color:#fff; padding:40px 24px 32px; }
+  .wrap { max-width:880px; margin:0 auto; }
+  header small { color:var(--orange); font-weight:700; letter-spacing:.08em; }
+  header h1 { margin:8px 0 6px; font-size:clamp(24px,4vw,34px); text-wrap:balance; }
+  header p { margin:0; color:#CFE0E4; font-size:16px; }
+  main { padding:28px 24px 48px; }
+  ol { list-style:none; padding:0; margin:0; display:grid; gap:14px; }
+  a.card { display:grid; grid-template-columns:56px 1fr auto; gap:16px; align-items:center; text-decoration:none; color:inherit;
+    background:#fff; border-radius:14px; padding:18px 20px; box-shadow:0 2px 8px rgba(20,49,61,.10); border:2px solid transparent; }
+  a.card:hover, a.card:focus-visible { border-color:var(--orange); outline:none; }
+  .n { width:56px; height:56px; border-radius:50%; background:var(--teal); color:#fff; display:flex; align-items:center; justify-content:center; font-size:22px; font-weight:800; }
+  .t { font-size:19px; font-weight:800; color:var(--petrol); }
+  .d { font-size:15px; color:var(--slate); margin-top:4px; line-height:1.5; }
+  .go { color:var(--orange); font-weight:800; font-size:15px; white-space:nowrap; }
+  footer { color:var(--slate); font-size:13px; margin-top:24px; line-height:1.6; }
+  @media (max-width:560px) { a.card { grid-template-columns:44px 1fr; } .n { width:44px; height:44px; font-size:18px; } .go { display:none; } }
+</style>
+</head>
+<body>
+<header><div class="wrap">
+  <small>AI 文件問答系統</small>
+  <h1>原理動畫</h1>
+  <p>每支約 30 秒，自動播放；也可以用 ← → 換步驟、空白鍵暫停。</p>
+</div></header>
+<main><div class="wrap">
+  <ol>
+    <li><a class="card" href="01_rag_flow.html"><span class="n">1</span><span><div class="t">開書考試：一份文件怎麼變成答案</div><div class="d">切成小段 → 做索引 → 找出最相關的幾段 → 照著寫答案</div></span><span class="go">播放 ▶</span></a></li>
+    <li><a class="card" href="02_hybrid_search.html"><span class="n">2</span><span><div class="t">兩種找法一起用：海選、合併、再複選</div><div class="d">看「意思」＋看「字面」，再仔細比對，只留前 5 名</div></span><span class="go">播放 ▶</span></a></li>
+    <li><a class="card" href="03_knowledge_graph.html"><span class="n">3</span><span><div class="t">知識圖譜：把規範之間的關係畫成地圖</div><div class="d">每條關係都要回原文驗證，查詢時沿著線走一圈</div></span><span class="go">播放 ▶</span></a></li>
+    <li><a class="card" href="04_agent_loop.html"><span class="n">4</span><span><div class="t">Agent：會自己多查幾次的助理</div><div class="d">想 → 查 → 看 → 判斷，資料齊了才開始寫答案</div></span><span class="go">播放 ▶</span></a></li>
+  </ol>
+  <footer>動畫中的規範編號（MIL-STD-810H、MIL-HDBK-310 等）僅作為說明範例。</footer>
+</div></main>
+</body>
+</html>

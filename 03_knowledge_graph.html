@@ -1,0 +1,298 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>關係圖怎麼建、怎麼查</title>
+<style>
+:root {
+  --petrol: #14313D; --ink: #1B2A33; --orange: #E07A2E; --teal: #2E7D86; --green: #5E8F4E;
+  --slate: #7F959E; --mist: #EEF2F3; --red: #B8432F; --line: #D5DEE1; --paper: #F7F9FA;
+  --tint-orange: #FDF1E7; --tint-teal: #E3EFF1;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body {
+  background: var(--paper); color: var(--ink); overflow: hidden;
+  font-family: "Microsoft JhengHei", "PingFang TC", "Noto Sans TC", sans-serif;
+  display: grid; grid-template-rows: auto 1fr auto;
+}
+header { padding: 18px 36px 4px; display: flex; align-items: baseline; gap: 18px; }
+header .kicker { font-size: 14px; color: var(--teal); font-weight: 700; letter-spacing: .08em; }
+header h1 { margin: 0; font-size: 28px; color: var(--petrol); text-wrap: balance; }
+#viewport { position: relative; overflow: hidden; }
+#stage { position: absolute; left: 50%; top: 50%; width: 1280px; height: 600px; transform-origin: center center; }
+.el {
+  position: absolute; left: 0; top: 0;
+  transition: transform .9s cubic-bezier(.2,.7,.2,1), opacity .6s ease, background-color .6s, border-color .6s,
+              box-shadow .6s, color .6s, width .8s, height .8s;
+}
+.card {
+  background: #fff; border-radius: 12px; box-shadow: 0 2px 8px rgba(20,49,61,.12);
+  border: 2px solid transparent;
+}
+.label { font-size: 15px; color: var(--slate); font-weight: 700; letter-spacing: .04em; }
+footer {
+  position: relative; background: var(--petrol); color: #fff; padding: 14px 36px 18px;
+  display: grid; grid-template-columns: 1fr auto; gap: 28px; align-items: center;
+}
+#caption .t { font-size: 25px; font-weight: 700; }
+#caption .t .n { color: var(--orange); margin-right: 14px; font-variant-numeric: tabular-nums; }
+#caption .d { font-size: 18px; color: #CFE0E4; margin-top: 6px; min-height: 1.5em; max-width: 64em; }
+nav { display: flex; gap: 10px; align-items: center; }
+nav button {
+  font: inherit; font-size: 15px; color: #fff; background: rgba(255,255,255,.1);
+  border: 1px solid rgba(255,255,255,.28); border-radius: 20px; padding: 8px 16px; cursor: pointer;
+}
+nav button:hover { background: rgba(255,255,255,.2); }
+nav button:focus-visible, .dots i:focus-visible { outline: 2px solid var(--orange); outline-offset: 2px; }
+.dots { display: flex; gap: 7px; margin-right: 10px; }
+.dots i { width: 11px; height: 11px; border-radius: 50%; background: rgba(255,255,255,.3); display: block; cursor: pointer; }
+.dots i.on { background: var(--orange); }
+.dots i.done { background: rgba(224,122,46,.55); }
+#progress { position: absolute; left: 0; top: 0; height: 3px; background: var(--orange); width: 0; }
+.hint { position: fixed; right: 18px; top: 16px; font-size: 12px; color: var(--slate); }
+@media (prefers-reduced-motion: reduce) { .el { transition: none !important; } }
+
+.snip { width: 580px; padding: 16px 20px; font-family: "Times New Roman", "Microsoft JhengHei", serif; font-size: 17px; line-height: 1.65; }
+.snip .src { display: block; font-family: "Microsoft JhengHei", sans-serif; font-size: 13px; font-weight: 700; color: var(--slate); margin-bottom: 6px; }
+mark.id { background: transparent; color: inherit; border-radius: 4px; padding: 0 2px; transition: background-color .6s, color .6s; font-weight: 700; }
+mark.id.on { background: #FBD9BC; color: var(--ink); }
+.node { width: 160px; height: 46px; border-radius: 23px; display: flex; align-items: center; justify-content: center;
+  font-size: 15px; font-weight: 700; color: #fff; background: var(--teal); box-shadow: 0 3px 10px rgba(20,49,61,.18); }
+.node.main { background: var(--petrol); }
+.node.hit { background: var(--orange); }
+svg.edges { position: absolute; left: 0; top: 0; overflow: visible; pointer-events: none; }
+svg.edges line { stroke: var(--slate); stroke-width: 3; stroke-dasharray: 8 7; opacity: 0; transition: opacity .6s, stroke .6s, stroke-width .6s; }
+svg.edges line.show { opacity: 1; }
+svg.edges line.ok { stroke: var(--teal); stroke-dasharray: none; }
+svg.edges line.bad { stroke: var(--red); }
+svg.edges line.hit { stroke: var(--orange); stroke-width: 5; stroke-dasharray: none; }
+.elab { font-size: 14px; font-weight: 800; color: var(--slate); background: var(--paper); padding: 0 6px; border-radius: 6px; white-space: nowrap; }
+.elab.ok { color: var(--teal); } .elab.bad { color: var(--red); } .elab.hit { color: var(--orange); }
+.mark { width: 30px; height: 30px; border-radius: 50%; color: #fff; font-size: 18px; font-weight: 800; display: flex; align-items: center; justify-content: center; }
+.note { width: 580px; padding: 14px 20px; font-size: 17px; line-height: 1.7; }
+.note b.ok { color: var(--teal); } .note b.bad { color: var(--red); }
+.qb { width: 580px; padding: 12px 18px; background: var(--teal); color: #fff; border-radius: 14px; font-size: 19px; font-weight: 700; }
+.qb small { display: block; font-size: 13px; font-weight: 400; opacity: .85; }
+.res { width: 580px; padding: 12px 20px; font-size: 18px; line-height: 1.8; background: var(--tint-orange); }
+.res .row { opacity: 0; transition: opacity .5s; }
+.res .row::before { content: "✓ "; color: var(--orange); font-weight: 800; }
+.res .tail { color: var(--orange); font-weight: 800; opacity: 0; transition: opacity .5s; }
+.graph-title { width: 600px; text-align: center; font-size: 15px; font-weight: 700; color: var(--slate); }
+</style>
+</head>
+<body>
+<header><span class="kicker">AI 文件問答系統｜動畫 3 / 4</span><h1>知識圖譜：把規範之間的關係畫成地圖</h1></header>
+<div id="viewport"><div id="stage">
+<div class="el card snip" id="s1"><span class="src">原文片段 ①　規範前言</span>
+  This revision of <mark class="id">MIL-STD-810H</mark> supersedes <mark class="id">MIL-STD-810G</mark> w/Change 1.</div>
+<div class="el card snip" id="s2"><span class="src">原文片段 ②　<mark class="id">Method 502.7</mark> 低溫測試</span>
+  … If cycling is required, refer to the cold ranges in <mark class="id">MIL-HDBK-310</mark>, <mark class="id">AR 70-38</mark>,
+  <mark class="id">STANAG 4370</mark>, or <mark class="id">AECTP 230</mark> …</div>
+<div class="el graph-title" id="gt">關係圖</div>
+<svg class="el edges" id="svg" width="1280" height="600"></svg>
+<div id="nodes"></div>
+<div id="labels"></div>
+<div class="el card note" id="note">
+  <b class="ok">✓ 6 條</b>：在原文找得到那句話 → 留下<br>
+  <b class="bad">✗ 1 條</b>：「AECTP 230 取代 810G」原文根本沒寫 → 丟掉
+</div>
+<div class="el qb" id="qb"><small>你的問題</small>「Method 502.7 引用了哪些其他規範？」</div>
+<div class="el card res" id="res">
+  <div class="row">MIL-HDBK-310</div><div class="row">AR 70-38</div><div class="row">STANAG 4370</div><div class="row">AECTP 230</div>
+  <div class="tail">沿著線走一圈，4 項全部列出，一個都不漏</div>
+</div>
+</div></div>
+<footer>
+  <div id="progress"></div>
+  <div id="caption"><div class="t" id="capT"></div><div class="d" id="capD"></div></div>
+  <nav aria-label="播放控制">
+    <div class="dots" id="dots"></div>
+    <button id="prev">◀ 上一步</button>
+    <button id="play">❚❚ 暫停</button>
+    <button id="next">下一步 ▶</button>
+    <button id="restart" title="從頭播放（R）">↻ 重來</button>
+  </nav>
+</footer>
+<div class="hint">← → 換步驟　空白鍵 暫停／播放</div>
+<script>
+// 迷你播放引擎：每一步是一個「狀態」，scene(i) 把畫面設成第 i 步的樣子。
+// 往回跳也正確（狀態式，不是累加動畫）。自動播放、可暫停、可單步、鍵盤操作。
+(function () {
+  const stage = document.getElementById("stage");
+  const viewport = document.getElementById("viewport");
+  function fit() {
+    const s = Math.min(viewport.clientWidth / 1280, viewport.clientHeight / 600);
+    stage.style.transform = `translate(-50%, -50%) scale(${s})`;
+  }
+  window.addEventListener("resize", fit);
+  fit();
+
+  window.$ = (id) => document.getElementById(id);
+  // set(el, {x, y, s, r, o, delay, ...css})：位置用 transform，方便做轉場
+  window.set = (el, p) => {
+    if (typeof el === "string") el = $(el);
+    if (!el) return;
+    const x = p.x ?? +(el.dataset.x || 0), y = p.y ?? +(el.dataset.y || 0);
+    const s = p.s ?? +(el.dataset.s || 1), r = p.r ?? +(el.dataset.r || 0);
+    el.dataset.x = x; el.dataset.y = y; el.dataset.s = s; el.dataset.r = r;
+    el.style.transform = `translate(${x}px, ${y}px) scale(${s}) rotate(${r}deg)`;
+    if (p.o !== undefined) el.style.opacity = p.o;
+    el.style.transitionDelay = (p.delay || 0) + "ms";
+    for (const k of Object.keys(p)) {
+      if (!["x", "y", "s", "r", "o", "delay"].includes(k)) el.style[k] = p[k];
+    }
+  };
+
+  const E = { i: 0, playing: true, timer: null };
+  window.Player = {
+    init(steps, scene) {
+      E.steps = steps; E.scene = scene;
+      const dots = $("dots");
+      steps.forEach((_, k) => {
+        const d = document.createElement("i");
+        d.tabIndex = 0; d.title = `第 ${k + 1} 步`;
+        d.onclick = () => { E.playing = false; go(k); };
+        d.onkeydown = (e) => { if (e.key === "Enter") { E.playing = false; go(k); } };
+        dots.appendChild(d);
+      });
+      $("prev").onclick = () => { E.playing = false; go(E.i - 1); };
+      $("next").onclick = () => { E.playing = false; go(E.i + 1); };
+      $("play").onclick = () => {
+        if (E.i >= E.steps.length - 1 && !E.playing) { E.playing = true; go(0); return; }
+        E.playing = !E.playing; go(E.i);
+      };
+      $("restart").onclick = () => { E.playing = true; go(0); };
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "ArrowRight" || e.key === "PageDown") { E.playing = false; go(E.i + 1); }
+        else if (e.key === "ArrowLeft" || e.key === "PageUp") { E.playing = false; go(E.i - 1); }
+        else if (e.key === " ") { e.preventDefault(); $("play").click(); }
+        else if (e.key.toLowerCase() === "r") { $("restart").click(); }
+      });
+      // 先畫第 0 步的「起始狀態」（不帶轉場），再開始播
+      document.querySelectorAll(".el").forEach((el) => (el.style.transition = "none"));
+      scene(-1);
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        document.querySelectorAll(".el").forEach((el) => (el.style.transition = ""));
+        setTimeout(() => go(0), 500);
+      }));
+    },
+  };
+
+  function go(i) {
+    E.i = Math.max(0, Math.min(E.steps.length - 1, i));
+    const st = E.steps[E.i];
+    E.scene(E.i);
+    $("capT").innerHTML = `<span class="n">${E.i + 1} / ${E.steps.length}</span>${st.title}`;
+    $("capD").textContent = st.text;
+    [...$("dots").children].forEach((d, k) => { d.className = k === E.i ? "on" : k < E.i ? "done" : ""; });
+    const last = E.i >= E.steps.length - 1;
+    $("play").textContent = E.playing && !last ? "❚❚ 暫停" : last ? "↻ 重新播放" : "▶ 播放";
+    clearTimeout(E.timer);
+    const bar = $("progress");
+    bar.style.transition = "none"; bar.style.width = "0";
+    if (E.playing && !last) {
+      const dur = st.dur || 5500;
+      requestAnimationFrame(() => { bar.style.transition = `width ${dur}ms linear`; bar.style.width = "100%"; });
+      E.timer = setTimeout(() => go(E.i + 1), dur);
+    } else if (last) { E.playing = false; }
+  }
+})();
+
+</script>
+<script>
+const N = {
+  h:  { t: "MIL-STD-810H", x: 900, y: 120, main: true },
+  g:  { t: "MIL-STD-810G", x: 1150, y: 210 },
+  m:  { t: "Method 502.7", x: 900, y: 300 },
+  hd: { t: "MIL-HDBK-310", x: 700, y: 470 },
+  ar: { t: "AR 70-38", x: 830, y: 545 },
+  st: { t: "STANAG 4370", x: 1000, y: 545 },
+  ae: { t: "AECTP 230", x: 1140, y: 440 },
+};
+const EDGES = [
+  { id: "e1", a: "h", b: "g", t: "取代", ok: true },
+  { id: "e2", a: "h", b: "m", t: "包含", ok: true },
+  { id: "e3", a: "m", b: "hd", t: "引用", ok: true, ref: true },
+  { id: "e4", a: "m", b: "ar", t: "引用", ok: true, ref: true },
+  { id: "e5", a: "m", b: "st", t: "引用", ok: true, ref: true },
+  { id: "e6", a: "m", b: "ae", t: "引用", ok: true, ref: true },
+  { id: "ex", a: "ae", b: "g", t: "取代？", ok: false },
+];
+const svg = $("svg");
+for (const e of EDGES) {
+  const l = document.createElementNS("http://www.w3.org/2000/svg", "line");
+  l.id = e.id;
+  l.setAttribute("x1", N[e.a].x); l.setAttribute("y1", N[e.a].y);
+  l.setAttribute("x2", N[e.b].x); l.setAttribute("y2", N[e.b].y);
+  svg.appendChild(l);
+  const lab = document.createElement("div");
+  lab.className = "el elab"; lab.id = "lb_" + e.id; lab.textContent = e.t;
+  $("labels").appendChild(lab);
+  const mk = document.createElement("div");
+  mk.className = "el mark"; mk.id = "mk_" + e.id; mk.textContent = e.ok ? "✓" : "✗";
+  mk.style.background = e.ok ? "var(--teal)" : "var(--red)";
+  $("labels").appendChild(mk);
+}
+for (const [k, n] of Object.entries(N)) {
+  const d = document.createElement("div");
+  d.className = "el node" + (n.main ? " main" : ""); d.id = "n_" + k; d.textContent = n.t;
+  $("nodes").appendChild(d);
+}
+const marks = [...document.querySelectorAll("mark.id")];
+
+function scene(i) {
+  const late = i >= 4;
+  set("s1", { x: 40, y: 30, o: late ? .3 : 1 });
+  set("s2", { x: 40, y: 150, o: late ? .3 : 1 });
+  marks.forEach((m, k) => {
+    m.classList.toggle("on", i >= 0);
+    m.style.transitionDelay = (i === 0 ? 300 + k * 250 : 0) + "ms";
+  });
+  set("gt", { x: 700, y: 30, o: i >= 1 ? 1 : 0 });
+  Object.entries(N).forEach(([k, n], idx) => {
+    const hit = i >= 4 && ["hd", "ar", "st", "ae"].includes(k);
+    const el = $("n_" + k);
+    el.classList.toggle("hit", hit);
+    if (i < 1) set(el, { x: 300, y: 200, s: .3, o: 0 });
+    else set(el, { x: n.x - 80, y: n.y - 23, s: 1, o: 1, delay: i === 1 ? idx * 140 : (hit ? 300 + idx * 250 : 0) });
+  });
+  EDGES.forEach((e, k) => {
+    const l = $(e.id), lab = $("lb_" + e.id), mk = $("mk_" + e.id);
+    const shown = i >= 2 && !(i >= 3 && !e.ok);
+    const checked = i >= 3;
+    const hit = i >= 4 && e.ref;
+    l.classList.toggle("show", i >= 2 && !(i >= 4 && !e.ok));
+    l.classList.toggle("ok", checked && e.ok && !hit);
+    l.classList.toggle("bad", checked && !e.ok);
+    l.classList.toggle("hit", hit);
+    l.style.transitionDelay = (i === 2 ? k * 250 : i === 3 ? k * 350 : hit ? 300 + k * 250 : 0) + "ms";
+    if (i === 3 && !e.ok) l.style.transitionDelay = "2600ms";
+    const mx = (N[e.a].x + N[e.b].x) / 2, my = (N[e.a].y + N[e.b].y) / 2;
+    lab.className = "el elab" + (hit ? " hit" : checked ? (e.ok ? " ok" : " bad") : "");
+    set(lab, { x: mx - 22, y: my - 12, o: (i >= 2 && !(i >= 4 && !e.ok)) ? 1 : 0, delay: i === 2 ? 200 + k * 250 : 0 });
+    set(mk, { x: mx + 22, y: my - 16, o: i === 3 ? 1 : 0, s: i === 3 ? 1 : .4, delay: i === 3 ? 300 + k * 350 : 0 });
+  });
+  // 驗證沒過的那條：第 4 步先標紅，最後淡出
+  if (i === 3) { setTimeout(() => { if (window.__i === 3) { $("ex").classList.remove("show"); set("lb_ex", { o: 0 }); } }, 4200); }
+  window.__i = i;
+  set("note", { x: 40, y: 330, o: i === 3 ? 1 : 0, delay: i === 3 ? 2800 : 0 });
+  set("qb", { x: 40, y: 290, o: i >= 4 ? 1 : 0 });
+  set("res", { x: 40, y: 380, o: i >= 4 ? 1 : 0, delay: i >= 4 ? 300 : 0 });
+  [...$("res").children].forEach((r, k) => {
+    r.style.transitionDelay = (i >= 4 ? 700 + k * 350 : 0) + "ms";
+    r.style.opacity = i >= 4 ? 1 : 0;
+  });
+}
+
+Player.init([
+  { title: "從原文裡找出規範編號", text: "系統先把文件裡出現的規範編號都標出來，例如 MIL-STD-810G、MIL-HDBK-310、STANAG 4370。", dur: 6000 },
+  { title: "每個編號變成一個點", text: "每一份規範、每一個測試方法，都是關係圖上的一個點。同一份規範在不同文件出現，也只算同一個點。", dur: 5500 },
+  { title: "請 AI 判斷它們之間的關係", text: "AI 讀原文，判斷兩兩之間是「引用」「取代」還是「包含」。注意右下那條：AI 猜「AECTP 230 取代 810G」。", dur: 7000 },
+  { title: "每條線都要回原文驗證", text: "系統回到原文找那句話：找得到的打勾留下；找不到的（像那條「取代」）直接丟掉。關係圖不是 AI 想像出來的。", dur: 8000 },
+  { title: "查詢：沿著線走一圈", text: "問「502.7 引用了哪些規範」，不用去猜要讀哪幾段，從 502.7 出發沿著「引用」的線走一圈，全部列出來。", dur: 7500 },
+], scene);
+</script>
+</body>
+</html>
